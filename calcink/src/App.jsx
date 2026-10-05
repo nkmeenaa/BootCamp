@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+
+import InkCanvas from './components/InkCanvas'
 import './App.css'
 
 function App() {
-  return <h1>Hello, Vite!</h1>
+  return (
+    <div className="app">
+      <h1>CalcInk</h1>
+      <InkCanvas />
+    </div>
+  );
 }
 export default App
