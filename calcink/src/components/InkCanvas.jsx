@@ -1,4 +1,5 @@
-import {useEffect, useRef , useState} from 'react';
+import { useEffect, useRef, useState } from "react";
+import { recognizeMath } from "../recognition/mathRecognizer";
 
 function InkCanvas(){
   const canvasRef = useRef(null);
@@ -10,6 +11,10 @@ function InkCanvas(){
   const [eraserSize, setEraserSize] = useState(30);
   const [tool, setTool] = useState("pen");
   const [strokeWidth,setStrokeWidth] = useState(4);
+
+//For model recognition
+  const [recognizedLatex, setRecognizedLatex] = useState("");
+  const [isRecognizing, setIsRecognizing] = useState(false);
 
   //Canvas Setup
   useEffect(() => {
@@ -51,6 +56,7 @@ function InkCanvas(){
       pressure,
     };
   };
+  
   const getPressureWidth = (pressure) => {
     const minWidth = strokeWidth * 0.5;
     const maxWidth = strokeWidth * 1.5;
@@ -261,11 +267,28 @@ function InkCanvas(){
     redrawCanvas();
   };
 
+  const handleRecognize = async () => {
+    if (strokes.current.length === 0) {
+      return;
+    };
+    try {
+    setIsRecognizing(true);
+    const result = await recognizeMath(strokes.current);
+    console.log("Recognition(CoMER) Result:", result);
+    setRecognizedLatex(result.latex || "");
+  } catch (err) {
+    console.error("Recognition failed:", err);
+    setRecognizedLatex("");
+  } finally {
+    setIsRecognizing(false);
+  }
+};
 
   return (
     <div className="canvas-wrapper">
 
       {/* TOOLBAR */}
+      
 
       <div className="toolbar">
 
@@ -330,6 +353,13 @@ function InkCanvas(){
           {strokeWidth}px
         </label>
 
+        <button
+          onClick={handleRecognize}
+          disabled={isRecognizing}
+        >
+          {isRecognizing ? "Recognizing..." : "Recognize"}
+        </button>
+
       </div>
 
       {/* CANVAS */}
@@ -337,12 +367,18 @@ function InkCanvas(){
       <canvas
         ref={canvasRef}
         className="ink-canvas"
-
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onPointerLeave={handlePointerUp}
       />
+      {recognizedLatex && (
+        <div className="recognition-result">
+          <strong>Recognized:</strong>{" "}
+          <span>{recognizedLatex}</span>
+        </div>
+      )}
 
     </div>
   );
