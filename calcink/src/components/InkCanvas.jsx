@@ -4,9 +4,8 @@ function InkCanvas(){
   const canvasRef = useRef(null);
 
   const strokes = useRef([]);
-  const undoStrokes = useRef([]);
   const redoStack = useRef([]);
-  const currentStroke = useRef([]);
+  const currentStroke = useRef(null);
   const isDrawing = useRef(false);
   const [eraserSize, setEraserSize] = useState(30);
   const [tool, setTool] = useState("pen");
@@ -41,35 +40,82 @@ function InkCanvas(){
   const getPointerPosition = (event) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
+    let pressure = event.pressure;
+    if(event.pointerType === "mouse"){
+      pressure = 0.5; // Default pressure for mouse
+    };
     
     return {
       x : event.clientX - rect.left,
-      y : event.clientY - rect.top
+      y : event.clientY - rect.top,
+      pressure,
     };
+  };
+  const getPressureWidth = (pressure) => {
+    const minWidth = strokeWidth * 0.5;
+    const maxWidth = strokeWidth * 1.5;
+
+    return (
+      minWidth +
+      pressure * (maxWidth - minWidth)
+    );
+  };
+
+  const addPointToStroke = (point) => {
+    const points = currentStroke.current.points;
+    const lastPoint = points[points.length - 1];
+    if (!lastPoint) {
+      points.push(point);
+      return;
+    }
+    const dx = point.x - lastPoint.x;
+    const dy = point.y - lastPoint.y;
+    const distance = Math.sqrt(
+      dx * dx + dy * dy
+    );
+    if (distance < 1.5) { // Ignore very tiny movements
+      return;
+    }
+    points.push(point);
   };
 
   // DRAW ONE STROKE
   const drawStroke = (ctx, stroke) => {
-    const canvas = canvasRef.current;
     if (stroke.points.length < 2) return;
-
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = stroke.width;
 
-    if(stroke.tool == "pixel-eraser"){
+    if (stroke.tool === "pixel-eraser") {
       ctx.globalCompositeOperation = "destination-out";
-    }else{
+    } else {
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = "#000000";
     }
-
     ctx.beginPath();
-    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-    for (let i = 1; i < stroke.points.length; i++) {
-      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    const points = stroke.points;
+
+    // Start at first point
+    ctx.moveTo(points[0].x, points[0].y);
+//For Smoother Curves
+    for (let i = 1; i < points.length - 1; i++) {
+      const current = points[i];
+      const next = points[i + 1];
+      const midX = (current.x + next.x) / 2;
+      const midY = (current.y + next.y) / 2;
+
+      ctx.quadraticCurveTo(
+        current.x,
+        current.y,
+        midX,
+        midY
+      );
     }
+
+    // Connect to the final point
+    const last = points[points.length - 1];
+    ctx.lineTo(last.x, last.y);
     ctx.stroke();
     ctx.restore();
   };
@@ -100,13 +146,18 @@ function InkCanvas(){
     isDrawing.current = true;
     currentStroke.current = {
       points: [point],
-      width: strokeWidth,
+      width: 
+      tool === "stroke-eraser" ? eraserSize : strokeWidth,
       tool: tool,
+      pointerType : event.pointerType,
+      startTime : performance.now(),
     };
     if (tool === "stroke-eraser") {
       eraseStrokeAtPoint(point);
     }
   };
+
+  
 
   // Draw
   const handlePointerMove = (event) => {
@@ -117,7 +168,7 @@ function InkCanvas(){
       eraseStrokeAtPoint(point);
       return;
     };
-    currentStroke.current.points.push(point);
+    addPointToStroke(point);
     const points = currentStroke.current.points;
     if (points.length < 2) return;
 
@@ -128,11 +179,15 @@ function InkCanvas(){
 
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.lineWidth = strokeWidth;
-    if(tool === "pixel-eraser") {ctx.globalCompositeOperation = "destination-out";} 
-    else {
+    
+
+    if (tool === "pixel-eraser") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.lineWidth = eraserSize;
+    }else {
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = "#000000";
+      ctx.lineWidth = getPressureWidth(point.pressure);
     }
     ctx.beginPath();
     ctx.moveTo(previous.x, previous.y);
@@ -152,9 +207,11 @@ function InkCanvas(){
       currentStroke.current.points.length > 1 &&
       tool !== "stroke-eraser"
     ){
+      currentStroke.current.endTime = performance.now();
       strokes.current.push(currentStroke.current);
       redoStack.current = [];
     }
+    
     currentStroke.current = null;
   };
 
