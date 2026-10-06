@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { recognizeMath } from "../recognition/mathRecognizer";
 
+import { evalMath } from "../Calculator/mathParser";
+
 function InkCanvas(){
   const canvasRef = useRef(null);
 
@@ -14,6 +16,8 @@ function InkCanvas(){
 
 //For model recognition
   const [recognizedLatex, setRecognizedLatex] = useState("");
+  const [calculatedResult, setCalculatedResult] = useState(null);
+  const [calculationError, setCalculationError] = useState("");
   const [isRecognizing, setIsRecognizing] = useState(false);
 
   //Canvas Setup
@@ -270,19 +274,37 @@ function InkCanvas(){
   const handleRecognize = async () => {
     if (strokes.current.length === 0) {
       return;
-    };
+    }
+
     try {
-    setIsRecognizing(true);
-    const result = await recognizeMath(strokes.current);
-    console.log("Recognition(CoMER) Result:", result);
-    setRecognizedLatex(result.latex || "");
-  } catch (err) {
-    console.error("Recognition failed:", err);
-    setRecognizedLatex("");
-  } finally {
-    setIsRecognizing(false);
-  }
-};
+      setIsRecognizing(true);
+
+      setCalculatedResult(null);
+      setCalculationError("");
+      const result = await recognizeMath(strokes.current);
+      console.log("Recognition(CoMER) Result:", result);
+      const latex = result.latex || "";
+      setRecognizedLatex(latex);
+
+      // Calculate recognized expression
+      const calculation = evalMath(latex);
+      console.log("Calculation Result:", calculation);
+      if (calculation.success) {
+        setCalculatedResult(calculation.value);
+        setCalculationError("");
+      } else {
+        setCalculatedResult(null);
+        setCalculationError(calculation.error);
+      }
+    } catch (err) {
+      console.error("Recognition failed:", err);
+      setRecognizedLatex("");
+      setCalculatedResult(null);
+      setCalculationError("Recognition failed");
+    } finally {
+      setIsRecognizing(false);
+    }
+  };
 
   return (
     <div className="canvas-wrapper">
@@ -375,8 +397,26 @@ function InkCanvas(){
       />
       {recognizedLatex && (
         <div className="recognition-result">
-          <strong>Recognized:</strong>{" "}
-          <span>{recognizedLatex}</span>
+
+          <div>
+            <strong>Recognized:</strong>{" "}
+            <span>{recognizedLatex}</span>
+          </div>
+
+          {calculatedResult !== null && (
+            <div>
+              <strong>Answer:</strong>{" "}
+              <span>{calculatedResult}</span>
+            </div>
+          )}
+
+          {calculationError && (
+            <div>
+              <strong>Error:</strong>{" "}
+              <span>{calculationError}</span>
+            </div>
+          )}
+
         </div>
       )}
 
