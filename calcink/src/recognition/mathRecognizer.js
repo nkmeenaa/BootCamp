@@ -1,5 +1,5 @@
 //from offical vue code i used this here in react to load the model and vocab
-import {InferenceEngine,preprocessStrokes,isStrokeMeaningful,loadVocab} from "ink-on/core";
+import { InferenceEngine, preprocessStrokes, isStrokeMeaningful, loadVocab } from "ink-on/core";
 let engine = null;
 let vocab = null;
 let initialized = false;
@@ -20,7 +20,7 @@ export async function initMathRecognizer() {
   await engine.init();
   initialized = true;
   console.log("CoMER model loaded successfully.");
-};
+}
 
 function convertCanvasStrokes(strokes) {
   return strokes
@@ -32,7 +32,7 @@ function convertCanvasStrokes(strokes) {
       })),
       lineWidth: stroke.width,
     }));
-};
+}
 export async function recognizeMath(strokes) {
   if (!initialized) {
     await initMathRecognizer();
@@ -58,4 +58,3 @@ export async function recognizeMath(strokes) {
     raw: result,
   };
 }
-

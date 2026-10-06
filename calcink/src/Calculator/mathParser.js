@@ -1,5 +1,5 @@
-export function normalise(latex){
-  if(!latex || typeof latex !== "string") return "";
+export function normalise(latex) {
+  if (!latex || typeof latex !== "string") return "";
 
   let exp = latex;
   exp = exp.replace(/\\,/g, "");
@@ -9,27 +9,35 @@ export function normalise(latex){
   exp = exp.replace(/\\times/g, "×");
   exp = exp.replace(/\\cdot/g, "×");
   exp = exp.replace(/\\div/g, "÷");
-  exp = exp.replace(/-/g, "-");
+  exp = exp.replace(/−/g, "-");
+
+  // Some recognition results use a handwritten x instead of LaTeX \times.
+  exp = exp.replace(/(\d|\))\s*[xX]\s*(?=\d|\()/g, "$1×");
 
   const index = exp.indexOf("=");
   //to stop eqn here only
-  if(index !== -1) exp = exp.substring(0,index);
+  if (index !== -1) exp = exp.substring(0, index);
   exp = exp.replace(/×/g, "*");
   exp = exp.replace(/÷/g, "/");
   exp = exp.replace(/\s+/g, "");
+
+  const unsupportedCommand = exp.match(/\\[a-zA-Z]+/);
+  if (unsupportedCommand) {
+    throw new Error(`Unsupported symbol: ${unsupportedCommand[0]}`);
+  }
   return exp;
 }
 
-function tokenize(exp){
+function tokenize(exp) {
   const tokens = [];
   let i = 0;
-  while(i < exp.length){
+  while (i < exp.length) {
     const char = exp[i];
-    if(/[0-9.]/.test(char)){
+    if (/[0-9.]/.test(char)) {
       let number = "";
       let dotCount = 0;
 
-      while(i<exp.length && /[0-9.]/.test(exp[i])) {
+      while (i < exp.length && /[0-9.]/.test(exp[i])) {
         if (exp[i] === ".") {
           dotCount++;
         }
@@ -37,7 +45,7 @@ function tokenize(exp){
         i++;
       }
 
-      if(dotCount > 1){
+      if (dotCount > 1) {
         throw new Error("Invalid decimal number");
       }
       if (number === ".") {
@@ -50,14 +58,14 @@ function tokenize(exp){
       continue;
     }
 
-    if(char === "+" ||char === "-" ||char === "*" ||char === "/"){
+    if (char === "+" || char === "-" || char === "*" || char === "/") {
       tokens.push({
         type: "operator",
         value: char,
       });
       i++;
       continue;
-    } 
+    }
     if (char === "(" || char === ")") {
       tokens.push({
         type: "parenthesis",
@@ -150,11 +158,7 @@ class Parser {
   parseUnary() {
     const token = this.current();
 
-    if (
-      token &&
-      token.type === "operator" &&
-      (token.value === "+" || token.value === "-")
-    ) {
+    if (token && token.type === "operator" && (token.value === "+" || token.value === "-")) {
       this.consume();
 
       const value = this.parseUnary();
@@ -184,21 +188,14 @@ class Parser {
     }
 
     // (
-    if (
-      token.type === "parenthesis" &&
-      token.value === "("
-    ) {
+    if (token.type === "parenthesis" && token.value === "(") {
       this.consume();
 
       const value = this.parseExpression();
 
       const closing = this.current();
 
-      if (
-        !closing ||
-        closing.type !== "parenthesis" ||
-        closing.value !== ")"
-      ) {
+      if (!closing || closing.type !== "parenthesis" || closing.value !== ")") {
         throw new Error("Missing closing parenthesis");
       }
 
@@ -213,9 +210,9 @@ class Parser {
 
 //Calc Functn
 
-export function evalMath(latex){
+export function evalMath(latex) {
   let exp = "";
-  try{
+  try {
     exp = normalise(latex);
     if (!exp) {
       return {
@@ -242,7 +239,7 @@ export function evalMath(latex){
       expression: exp,
       error: null,
     };
-  }catch(err){
+  } catch (err) {
     return {
       success: false,
       value: null,

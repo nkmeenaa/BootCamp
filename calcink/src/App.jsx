@@ -1,14 +1,24 @@
-import { useState } from 'react'
-
-import InkCanvas from './components/InkCanvas'
-import './App.css'
+import InkCanvas from "./components/InkCanvas";
+import "./App.css";
 
 function App() {
   return (
     <div className="app">
-      <h1>CalcInk</h1>
-      <InkCanvas />
+      <main className="workspace">
+        <header className="app-header">
+          <div>
+            <p className="eyebrow">Smart handwriting workspace</p>
+            <h1>Write it. <span>Solve it.</span></h1>
+            <p className="subtitle">Put your calculation on paper and let CalcInk handle the answer.</p>
+          </div>
+          <div className="header-status">
+            <span className="status-dot" aria-hidden="true" />
+            Ready to write
+          </div>
+        </header>
+        <InkCanvas />
+      </main>
     </div>
   );
 }
-export default App
+export default App;
