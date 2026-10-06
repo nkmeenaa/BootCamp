@@ -612,6 +612,11 @@ function InkCanvas() {
       // Division
       .replace(/\\div/g, "÷")
 
+      // CoMER may wrap handwritten brackets in LaTeX sizing commands.
+      .replace(/\\left/g, "")
+      .replace(/\\right/g, "")
+      .replace(/[\[\]{}]/g, (bracket) => (bracket === "[" || bracket === "{" ? "(" : ")"))
+
       // Minus
       .replace(/−/g, "-")
 
@@ -660,11 +665,11 @@ function InkCanvas() {
       };
     }
     const expressionWithoutEquals = value.slice(0, -1);
-    const allowedPattern = /^[0-9+\-*/.×÷]+$/;
+    const allowedPattern = /^[0-9+\-*/.×÷()]+$/;
 
     if (!allowedPattern.test(expressionWithoutEquals)) {
       const invalidCharacter = [...expressionWithoutEquals].find(
-        (char) => !/[0-9+\-*/.×÷]/.test(char)
+        (char) => !/[0-9+\-*/.×÷()]/.test(char)
       );
 
       return {

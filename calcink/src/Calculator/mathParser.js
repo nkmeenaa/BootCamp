@@ -9,6 +9,9 @@ export function normalise(latex) {
   exp = exp.replace(/\\times/g, "×");
   exp = exp.replace(/\\cdot/g, "×");
   exp = exp.replace(/\\div/g, "÷");
+  exp = exp.replace(/\\left/g, "");
+  exp = exp.replace(/\\right/g, "");
+  exp = exp.replace(/[\[\]{}]/g, (bracket) => (bracket === "[" || bracket === "{" ? "(" : ")"));
   exp = exp.replace(/−/g, "-");
 
   // Some recognition results use a handwritten x instead of LaTeX \times.
