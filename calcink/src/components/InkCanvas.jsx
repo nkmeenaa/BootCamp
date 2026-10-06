@@ -19,6 +19,8 @@ function InkCanvas(){
   const [calculatedResult, setCalculatedResult] = useState(null);
   const [calculationError, setCalculationError] = useState("");
   const [isRecognizing, setIsRecognizing] = useState(false);
+  const recognitionTimer = useRef(null);
+
 
   //Canvas Setup
   useEffect(() => {
@@ -29,6 +31,10 @@ function InkCanvas(){
       window.removeEventListener('resize', resizeCanvas);
     };
   },[]);
+
+  useEffect(() => {
+    redrawCanvas();
+  }, [calculatedResult]);
 
   const resizeCanvas = () => {
     const canvas = canvasRef.current;
@@ -130,27 +136,78 @@ function InkCanvas(){
     ctx.restore();
   };
 
+//for drawing final eqn
+  const drawCalculatedAnswer = (ctx) => {
+    if (calculatedResult === null) {
+      return;
+    }
+
+    const penStrokes = strokes.current.filter(
+      (stroke) => stroke.tool === "pen"
+    );
+
+    if (penStrokes.length === 0) {
+      return;
+    }
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    for (const stroke of penStrokes) {
+      for (const point of stroke.points) {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+
+        minY = Math.min(minY, point.y);
+        maxY = Math.max(maxY, point.y);
+      }
+    }
+    const answerX = maxX + 30;
+    const answerY = (minY + maxY) / 2;
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#2563eb";
+    ctx.font = "bold 32px Arial";
+    ctx.textBaseline = "middle";
+    ctx.fillText(
+      String(calculatedResult),
+      answerX,
+      answerY
+    );
+    ctx.restore();
+  };
+
   // Redraw
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
-    if(!canvas) return;
-
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const rect = canvas.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);     // see changes here  dpr <--> 1
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); 
-
-    for(const stroke of strokes.current){
-      drawStroke(ctx,stroke);
-    };
-  }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    for (const stroke of strokes.current) {
+      drawStroke(ctx, stroke);
+    }
+    // Draw calculated answer
+    drawCalculatedAnswer(ctx);
+  };
 
   // Start drawing
   const handlePointerDown = (event) => {
     const canvas = canvasRef.current;
+
+    setCalculatedResult(null);
+    setCalculationError("");
+    setRecognizedLatex("");
+
     canvas.setPointerCapture(event.pointerId);
     const point = getPointerPosition(event);
     isDrawing.current = true;
@@ -206,23 +263,73 @@ function InkCanvas(){
     ctx.restore();
     
   };
+//for finding "="
+  const looksLikeEqualsStroke = (stroke) => {
+    if (!stroke || !stroke.points || stroke.points.length < 2) {
+      return false;
+    }
+
+    const points = stroke.points;
+    const first = points[0];
+    const last = points[points.length - 1];
+    const dx = Math.abs(last.x - first.x);
+    const dy = Math.abs(last.y - first.y);
+    // Equals sign should be mostly horizontal
+    if (dx === 0) return false;
+    return dy / dx < 0.35;
+  };
+
+  const hasEqualsSign = () => {
+    const penStrokes = strokes.current.filter(
+      (stroke) => stroke.tool === "pen"
+    );
+    if (penStrokes.length < 2) {
+      return false;
+    }
+    const stroke1 = penStrokes[penStrokes.length - 2];
+    const stroke2 = penStrokes[penStrokes.length - 1];
+    if (
+      !looksLikeEqualsStroke(stroke1) ||
+      !looksLikeEqualsStroke(stroke2)
+    ) {
+      return false;
+    }
+    const getCenterY = (stroke) => {
+      const ys = stroke.points.map((p) => p.y);
+      return (
+        Math.min(...ys) +
+        Math.max(...ys)
+      ) / 2;
+    };
+    const y1 = getCenterY(stroke1);
+    const y2 = getCenterY(stroke2);
+    // Distance between the two lines
+    const distance = Math.abs(y1 - y2);
+    // They should be close enough to be an "="
+    return distance > 3 && distance < 50;
+  };
+
 
   //Stop drawing
   const handlePointerUp = () => {
     if (!isDrawing.current) return;
     isDrawing.current = false;
-
-    if(
+    if (
       currentStroke.current &&
       currentStroke.current.points.length > 1 &&
       tool !== "stroke-eraser"
-    ){
+    ) {
       currentStroke.current.endTime = performance.now();
       strokes.current.push(currentStroke.current);
       redoStack.current = [];
     }
-    
     currentStroke.current = null;
+    if (tool === "pen" && hasEqualsSign()) {
+      clearTimeout(recognitionTimer.current);
+      recognitionTimer.current = setTimeout(() => {
+        handleRecognize();
+      }, 150);
+    }
   };
 
   const eraseStrokeAtPoint = (point) => {
@@ -291,6 +398,13 @@ function InkCanvas(){
       console.log("Calculation Result:", calculation);
       if (calculation.success) {
         setCalculatedResult(calculation.value);
+        // Build the correct equation ourselves.
+        const displayExpression = calculation.expression
+          .replace(/\*/g, " × ")
+          .replace(/\//g, " ÷ ");
+        setRecognizedLatex(
+          `${displayExpression} = ${calculation.value}`
+        );
         setCalculationError("");
       } else {
         setCalculatedResult(null);
@@ -402,13 +516,6 @@ function InkCanvas(){
             <strong>Recognized:</strong>{" "}
             <span>{recognizedLatex}</span>
           </div>
-
-          {calculatedResult !== null && (
-            <div>
-              <strong>Answer:</strong>{" "}
-              <span>{calculatedResult}</span>
-            </div>
-          )}
 
           {calculationError && (
             <div>

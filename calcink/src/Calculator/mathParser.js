@@ -6,15 +6,15 @@ export function normalise(latex){
   exp = exp.replace(/\\;/g, "");
   exp = exp.replace(/\\:/g, "");
   exp = exp.replace(/\\!/g, "");
-  exp = exp.replace(/\\times/g, "x");
-  exp = exp.replace(/\\cdot/g, "x");
+  exp = exp.replace(/\\times/g, "×");
+  exp = exp.replace(/\\cdot/g, "×");
   exp = exp.replace(/\\div/g, "÷");
   exp = exp.replace(/-/g, "-");
 
   const index = exp.indexOf("=");
   //to stop eqn here only
   if(index !== -1) exp = exp.substring(0,index);
-  exp = exp.replace(/x/g, "*");
+  exp = exp.replace(/×/g, "*");
   exp = exp.replace(/÷/g, "/");
   exp = exp.replace(/\s+/g, "");
   return exp;
