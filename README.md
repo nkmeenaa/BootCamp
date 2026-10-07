@@ -1,6 +1,6 @@
 # CalcInk
 
-CalcInk is a browser-based handwritten mathematics calculator built for the Inter IIT Bootcamp Software Development Challenge.
+CalcInk is a browser-based handwritten mathematics calculator.
 
 ## Quick Start
 
