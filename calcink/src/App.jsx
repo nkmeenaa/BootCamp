@@ -8,7 +8,7 @@ function App(){
         <header className="app-header">
           <div>
             <p className="eyebrow">Smart handwriting workspace</p>
-            <h1>Write it. <span>Solve it.</span></h1>
+            <h1><span>Just Write It.</span></h1>
             <p className="subtitle">Put your calculation on paper and let CalcInk handle the answer.</p>
           </div>
           <div className="header-status">
