@@ -1,11 +1,11 @@
-//from offical vue code i used this here in react to load the model and vocab
+//from offical vue code i used this here by converting react to load the model and vocab
 import { InferenceEngine, preprocessStrokes, isStrokeMeaningful, loadVocab } from "ink-on/core";
 let engine = null;
 let vocab = null;
 let initialized = false;
 
-export async function initMathRecognizer() {
-  if (initialized) {
+export async function initMathRecognizer(){
+  if (initialized){
     return;
   }
   console.log("Loading CoMER model...");
@@ -22,7 +22,7 @@ export async function initMathRecognizer() {
   console.log("CoMER model loaded successfully.");
 }
 
-function convertCanvasStrokes(strokes) {
+function convertCanvasStrokes(strokes){
   return strokes
     .filter((stroke) => stroke.tool === "pen")
     .map((stroke) => ({
@@ -33,19 +33,18 @@ function convertCanvasStrokes(strokes) {
       lineWidth: stroke.width,
     }));
 }
-export async function recognizeMath(strokes) {
-  if (!initialized) {
+export async function recognizeMath(strokes){
+  if (!initialized){
     await initMathRecognizer();
   }
   const modelStrokes = convertCanvasStrokes(strokes);
-  if (modelStrokes.length === 0) {
+  if (modelStrokes.length === 0){
     return {
       latex: "",
       raw: null,
     };
   }
-  // Check the ENTIRE stroke array
-  if (!isStrokeMeaningful(modelStrokes)) {
+  if (!isStrokeMeaningful(modelStrokes)){
     return {
       latex: "",
       raw: null,

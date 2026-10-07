@@ -3,7 +3,7 @@ import { recognizeMath } from "../recognition/mathRecognizer";
 
 import { evalMath } from "../Calculator/mathParser";
 
-function InkCanvas() {
+function InkCanvas(){
   const canvasRef = useRef(null);
 
   const strokes = useRef([]);
@@ -38,13 +38,11 @@ function InkCanvas() {
 
   const saveHistory = () => {
     undoStack.current.push(cloneStrokes(strokes.current));
-
-    // New action invalidates redo
     redoStack.current = [];
   };
+
   useEffect(() => {
     resizeCanvas();
-
     window.addEventListener("resize", resizeCanvas);
     return () => {
       window.removeEventListener("resize", resizeCanvas);
@@ -76,15 +74,15 @@ function InkCanvas() {
 
     redrawCanvas();
   };
-  //Get Pointer Position
+
+
   const getPointerPosition = (event) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     let pressure = event.pressure;
-    if (event.pointerType === "mouse") {
+    if (event.pointerType === "mouse"){
       pressure = 0.5; // Default pressure for mouse
     }
-
     return {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
@@ -95,23 +93,21 @@ function InkCanvas() {
   const getPressureWidth = (pressure) => {
     const minWidth = strokeWidth * 0.5;
     const maxWidth = strokeWidth * 1.5;
-
     return minWidth + pressure * (maxWidth - minWidth);
   };
 
   const addPointToStroke = (point) => {
     const points = currentStroke.current.points;
     const lastPoint = points[points.length - 1];
-    if (!lastPoint) {
+    if (!lastPoint){
       points.push(point);
       return;
     }
     const dx = point.x - lastPoint.x;
     const dy = point.y - lastPoint.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance < 1.5) {
-      // Ignore very tiny movements
-      return;
+    if (distance < 1.5){
+      return;                            // Ignore very tiny movements
     }
     points.push(point);
   };
@@ -119,57 +115,44 @@ function InkCanvas() {
   // DRAW ONE STROKE
   const drawStroke = (ctx, stroke) => {
     if (stroke.points.length < 2) return;
-
     ctx.save();
-
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = stroke.width;
-
-    if (stroke.tool === "pixel-eraser") {
+    if (stroke.tool === "pixel-eraser"){
       ctx.globalCompositeOperation = "destination-out";
     } else {
       ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = "#000000";
     }
-
     const points = stroke.points;
-
     ctx.beginPath();
-
     ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 1; i < points.length; i++) {
+    for (let i = 1; i < points.length; i++){
       ctx.lineTo(
         points[i].x,
         points[i].y
       );
     }
-
     ctx.stroke();
-
     ctx.restore();
   };
 
   //for drawing final eqn
   const drawCalculatedAnswer = (ctx) => {
-    if (calculatedResult === null) {
+    if (calculatedResult === null){
       return;
     }
-
     const penStrokes = strokes.current.filter((stroke) => stroke.tool === "pen");
-
-    if (penStrokes.length === 0) {
+    if (penStrokes.length === 0){
       return;
     }
-
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
     let maxY = -Infinity;
-
-    for (const stroke of penStrokes) {
-      for (const point of stroke.points) {
+    for (const stroke of penStrokes){
+      for (const point of stroke.points){
         minX = Math.min(minX, point.x);
         maxX = Math.max(maxX, point.x);
 
@@ -181,7 +164,6 @@ function InkCanvas() {
     let fontSize = writingHeight * 0.65;
     fontSize = Math.max(20, Math.min(fontSize, 80));
     const answerX = maxX + 30;
-    // Vertically center with handwriting
     const answerY = (minY + maxY) / 2;
     ctx.save();
     ctx.globalCompositeOperation = "source-over";
@@ -191,6 +173,8 @@ function InkCanvas() {
     ctx.fillText(String(calculatedResult), answerX, answerY);
     ctx.restore();
   };
+
+
   // Redraw
   const redrawCanvas = () => {
     const canvas = canvasRef.current;
@@ -200,53 +184,43 @@ function InkCanvas() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    for (const stroke of strokes.current) {
+    for (const stroke of strokes.current){
       drawStroke(ctx, stroke);
     }
-    // Draw calculated answer
-    drawCalculatedAnswer(ctx);
+    drawCalculatedAnswer(ctx);                           // Draw calculated answer
+    
   };
 
   const scheduleRecognition = () => {
     clearTimeout(recognitionTimer.current);
-
     recognitionTimer.current = setTimeout(() => {
-      if (recognitionRunning.current) {
+      if (recognitionRunning.current){
         recognitionPending.current = true;
         return;
       }
-
       handleRecognize();
     }, 700);
   };
+
   // Start drawing
- const handlePointerDown = (event) => {
+  const handlePointerDown = (event) => {
     const canvas = canvasRef.current;
-
     canvas.setPointerCapture(event.pointerId);
-
     const point = getPointerPosition(event);
-
     isDrawing.current = true;
-
     saveHistory();
-
-    // Pixel eraser
-    if (tool === "pixel-eraser") {
+    if (tool === "pixel-eraser"){      //pixel-eraser
       eraseStrokeAtPoint(point);
       currentStroke.current = null;
       return;
     }
 
-    // Stroke eraser
-    if (tool === "stroke-eraser") {
+    if (tool === "stroke-eraser"){        //stroke-eraser defining
       eraseWholeStrokeAtPoint(point);
       currentStroke.current = null;
       return;
     }
-
-    // Pen
-    currentStroke.current = {
+    currentStroke.current = {          //degine pen
       points: [point],
       width: getPressureWidth(point.pressure),
       tool: "pen",
@@ -254,59 +228,43 @@ function InkCanvas() {
       startTime: performance.now(),
     };
   };
+
+
   // Draw
   const handlePointerMove = (event) => {
     if (!isDrawing.current) return;
-
     const point = getPointerPosition(event);
-
-    // Stroke eraser
-    if (tool === "stroke-eraser") {
+    if (tool === "stroke-eraser"){
       eraseWholeStrokeAtPoint(point);
       return;
     }
-
-    // Pixel eraser
-    if (tool === "pixel-eraser") {
+    if (tool === "pixel-eraser"){
       eraseStrokeAtPoint(point);
       return;
     }
-
-    // Normal pen
     addPointToStroke(point);
-
     const points = currentStroke.current.points;
-
     if (points.length < 2) return;
-
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
-
     const previous = points[points.length - 2];
-
     ctx.save();
-
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-
     ctx.globalCompositeOperation = "source-over";
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = currentStroke.current.width;
-
     ctx.beginPath();
-
     ctx.moveTo(
       previous.x,
       previous.y
     );
-
     ctx.lineTo(
       point.x,
       point.y
     );
 
     ctx.stroke();
-
     ctx.restore();
   };
 
@@ -316,7 +274,7 @@ function InkCanvas() {
     let minY = Infinity;
     let maxY = -Infinity;
 
-    for (const point of stroke.points) {
+    for (const point of stroke.points){
       minX = Math.min(minX, point.x);
       maxX = Math.max(maxX, point.x);
       minY = Math.min(minY, point.y);
@@ -335,169 +293,121 @@ function InkCanvas() {
   };
 
   const isHorizontalStroke = (stroke) => {
-    if (!stroke || stroke.points.length < 2) {
+    if (!stroke || stroke.points.length < 2){
       return false;
     }
-
     const first = stroke.points[0];
     const last = stroke.points[stroke.points.length - 1];
-
     const dx = Math.abs(last.x - first.x);
     const dy = Math.abs(last.y - first.y);
 
-    // Not enough horizontal movement
-    if (dx < 15) {
+    if (dx < 15){                    // Not enough horizontal movement
       return false;
     }
-
-    // Mostly horizontal
     return dy / dx < 0.25;
   };
+
+
   const isEqualsSign = () => {
     const penStrokes = strokes.current.filter(
       (stroke) => stroke.tool === "pen"
     );
-
-    if (penStrokes.length < 2) {
+    if (penStrokes.length < 2){
       return false;
     }
 
     // Check every pair of pen strokes
-    for (let i = 0; i < penStrokes.length - 1; i++) {
+    for (let i = 0; i < penStrokes.length - 1; i++){
       const top = penStrokes[i];
       const bottom = penStrokes[i + 1];
-
       if (
         !isHorizontalStroke(top) ||
         !isHorizontalStroke(bottom)
-      ) {
+      ){
         continue;
       }
-
       const a = getStrokeBounds(top);
       const b = getStrokeBounds(bottom);
-
-      // They must overlap horizontally
       const overlapStart = Math.max(
         a.minX,
         b.minX
       );
-
       const overlapEnd = Math.min(
         a.maxX,
         b.maxX
       );
-
       const overlap = overlapEnd - overlapStart;
-
-      if (overlap <= 0) {
+      if (overlap <= 0){
         continue;
       }
 
-      // They should be close vertically
       const verticalDistance = Math.abs(
         a.centerY - b.centerY
       );
-
       const averageHeight = Math.max(
         a.height,
         b.height,
         10
       );
-
-      if (
-        verticalDistance <=
-        averageHeight * 8
-      ) {
-        return true;
+      if (verticalDistance <= averageHeight * 8){ 
+        return true; 
       }
     }
 
     return false;
   };
+
+
   //Stop drawing
   const handlePointerUp = () => {
     if (!isDrawing.current) return;
-
     isDrawing.current = false;
-
-    if (
-      currentStroke.current &&
-      currentStroke.current.points.length > 1 &&
-      tool === "pen"
-    ) {
-      currentStroke.current.endTime =
-        performance.now();
-
-      strokes.current.push(
-        currentStroke.current
-      );
-
+    if (currentStroke.current && currentStroke.current.points.length > 1 && tool === "pen"){
+      currentStroke.current.endTime = performance.now();
+      strokes.current.push(currentStroke.current);
       redoStack.current = [];
-
-      if (isEqualsSign()) {
+      if (isEqualsSign()){
         scheduleRecognition();
       }
     }
-
     currentStroke.current = null;
   };
-
   const eraseStrokeAtPoint = (point) => {
     const eraserRadius = eraserSize / 2;
-
     let anythingChanged = false;
-
     const newStrokes = [];
-
-    for (const stroke of strokes.current) {
-      if (!stroke.points || stroke.points.length < 2) {
+    for (const stroke of strokes.current){
+      if (!stroke.points || stroke.points.length < 2){
         continue;
       }
-
       let strokeChanged = false;
-
       const segments = [];
       let currentSegment = [];
-
-      for (const p of stroke.points) {
+      for (const p of stroke.points){
         const dx = p.x - point.x;
         const dy = p.y - point.y;
-
         const distance = Math.sqrt(
           dx * dx + dy * dy
         );
-
-        if (distance < eraserRadius) {
-          // This point is erased
+        if (distance < eraserRadius){
           strokeChanged = true;
           anythingChanged = true;
-
-          // End current segment
-          if (currentSegment.length >= 2) {
+          if (currentSegment.length >= 2){
             segments.push(currentSegment);
           }
-
           currentSegment = [];
-        } else {
-          // Keep point
+        }else{
           currentSegment.push(p);
         }
       }
-
-      // Add final segment
-      if (currentSegment.length >= 2) {
+      if(currentSegment.length >= 2){
         segments.push(currentSegment);
       }
-
-      // Nothing was erased from this stroke
-      if (!strokeChanged) {
+      if(!strokeChanged){
         newStrokes.push(stroke);
         continue;
       }
-
-      // The stroke was cut into multiple pieces
-      for (const segment of segments) {
+      for(const segment of segments){
         newStrokes.push({
           ...stroke,
           points: segment,
@@ -505,45 +415,36 @@ function InkCanvas() {
       }
     }
 
-    if (!anythingChanged) {
+    if(!anythingChanged){
       return;
     }
-
-    // Replace old strokes with the split strokes
-    strokes.current = newStrokes;
-
-    // Clear old recognition/result
+    strokes.current = newStrokes;             // Replace old strokes with the split strokes
+    
     setCalculatedResult(null);
-    setRecognizedLatex("");
+    setRecognizedLatex("");                 // Clear old recognition/result
     setCalculationError("");
 
-    // Redraw from actual stroke data
-    redrawCanvas();
+    redrawCanvas();                                            // Redraw from actual stroke data
   };
 
   const eraseWholeStrokeAtPoint = (point) => {
     const eraserRadius = eraserSize / 2;
     let anythingChanged = false;
-
     strokes.current = strokes.current.filter((stroke) => {
       const touchesEraser = stroke.points.some((strokePoint) => {
         const dx = strokePoint.x - point.x;
         const dy = strokePoint.y - point.y;
         return Math.hypot(dx, dy) < eraserRadius;
       });
-
-      if (touchesEraser) {
+      if (touchesEraser){
         anythingChanged = true;
         return false;
       }
-
       return true;
     });
-
-    if (!anythingChanged) {
+    if (!anythingChanged){
       return;
     }
-
     setCalculatedResult(null);
     setRecognizedLatex("");
     setCalculationError("");
@@ -552,139 +453,120 @@ function InkCanvas() {
 
 
   const undo = () => {
-    if (undoStack.current.length === 0) {
+    if (undoStack.current.length === 0){
       return;
     }
-
     redoStack.current.push(cloneStrokes(strokes.current));
-
     strokes.current = undoStack.current.pop();
-
     setCalculatedResult(null);
     setRecognizedLatex("");
     setCalculationError("");
-
     redrawCanvas();
   };
+
+
   const redo = () => {
-    if (redoStack.current.length === 0) {
+    if (redoStack.current.length === 0){
       return;
     }
-
     undoStack.current.push(cloneStrokes(strokes.current));
-
     strokes.current = redoStack.current.pop();
-
     setCalculatedResult(null);
     setRecognizedLatex("");
     setCalculationError("");
-
     redrawCanvas();
   };
+
 
   const clearCanvas = () => {
-    if (strokes.current.length === 0) {
+    if (strokes.current.length === 0){
       return;
     }
-
     saveHistory();
-
     strokes.current = [];
-
     setCalculatedResult(null);
     setRecognizedLatex("");
     setCalculationError("");
-
     redrawCanvas();
   };
+
 // This is i'm do for showing predicted exn if it predictwd some worng then user can understand what have to change.
 
   const normalizeLatex = (latex) => {
-    if (!latex || typeof latex !== "string") {
+    if (!latex || typeof latex !== "string"){
       return "";
     }
-
     let expression = latex
+      // CoMER may escape the command prefix, returning "\\frac" instead of "\frac".
+      .replace(/\\\\(?=[a-zA-Z])/g, "\\")
       // Multiplication
       .replace(/\\times/g, "×")
       .replace(/\\cdot/g, "×")
-
       // Division
       .replace(/\\div/g, "÷")
-
       // CoMER may wrap handwritten brackets in LaTeX sizing commands.
       .replace(/\\left/g, "")
       .replace(/\\right/g, "")
+      // Convert fractions before braces are converted to parentheses.
+      .replace(/\\frac\s*\{([^{}]+)\}\s*\{([^{}]+)\}/g, "($1)/($2)")
       .replace(/[\[\]{}]/g, (bracket) => (bracket === "[" || bracket === "{" ? "(" : ")"))
-
       // Minus
       .replace(/−/g, "-")
-
       // Remove LaTeX spacing
       .replace(/\\,/g, "")
       .replace(/\\;/g, "")
       .replace(/\\:/g, "")
       .replace(/\\!/g, "")
       .replace(/\\ /g, " ")
-
       // Remove whitespace
       .replace(/\s+/g, "");
-
-    // CoMER can append a guessed answer after the handwritten equals sign
-    // (for example: "5 \\times 5 = 5"). Only the handwritten expression
+  
     // before the first equals sign is used for calculation.
     const equalsIndex = expression.indexOf("=");
-    if (equalsIndex !== -1) {
+    if (equalsIndex !== -1){
       expression = expression.slice(0, equalsIndex + 1);
     }
-
-    // A handwritten multiplication sign is sometimes recognized as x.
     expression = expression.replace(/(\d|\))[xX](?=\d|\()/g, "$1×");
-
     return expression;
   };
 
   const validateRecognizedExpression = (expression) => {
-    if (!expression || expression.trim() === "") {
-      return {
+    if (!expression || expression.trim() === ""){
+      return{
         valid: false,
         error: "Could not recognize the handwriting.",
       };
     }
     const value = expression.replace(/\s+/g, "");
-    if (!value.includes("=")) {
-      return {
+    if (!value.includes("=")){
+      return{
         valid: false,
         error: "Please write '=' at the end of the expression.",
       };
     }
-    if (!value.endsWith("=")) {
-      return {
+    if (!value.endsWith("=")){
+      return{
         valid: false,
         error: "Invalid '=' position. Write '=' at the end.",
       };
     }
     const expressionWithoutEquals = value.slice(0, -1);
     const allowedPattern = /^[0-9+\-*/.×÷()]+$/;
-
-    if (!allowedPattern.test(expressionWithoutEquals)) {
+    if (!allowedPattern.test(expressionWithoutEquals)){
       const invalidCharacter = [...expressionWithoutEquals].find(
         (char) => !/[0-9+\-*/.×÷()]/.test(char)
       );
-
       return {
         valid: false,
         error: `Unrecognized symbol "${invalidCharacter}". Please rewrite it.`,
       };
     }
-
-    if (expressionWithoutEquals.length === 0) {
+    if (expressionWithoutEquals.length === 0){
       return {
         valid: false,
         error: "No expression was recognized before '='.",
       };
     }
-
     return {
       valid: true,
       expression: value,
@@ -693,104 +575,80 @@ function InkCanvas() {
 
 
   const handleRecognize = async () => {
-    if (strokes.current.length === 0) {
+    if (strokes.current.length === 0){
       return;
     }
-
-    if (recognitionRunning.current) {
+    if (recognitionRunning.current){
       recognitionPending.current = true;
       return;
     }
-
     recognitionRunning.current = true;
-
     try {
       setIsRecognizing(true);
-
       setCalculatedResult(null);
       setRecognizedLatex("");
       setCalculationError("");
-
-      // The model runs asynchronously, so recognize an immutable drawing
       // snapshot instead of a stroke array that the user may still edit.
       const recognitionStrokes = cloneStrokes(strokes.current);
       const result = await recognizeMath(recognitionStrokes);
-
       console.log("Recognition(CoMER) Result:", result);
-
       const latex = result.latex || "";
       const normalized = normalizeLatex(latex);
       console.log("Raw CoMER:", latex);
       console.log("Normalized:", normalized);
       const validation = validateRecognizedExpression(normalized);
 
-      if (!validation.valid) {
+      if (!validation.valid){
         console.warn("Invalid recognition:", latex);
-
         setRecognizedLatex("");
         setCalculatedResult(null);
         setCalculationError(validation.error);
-
         return;
       }
       const calculation = evalMath(normalized);
-
       console.log("Calculation Result:", calculation);
 
-      if (!calculation.success) {
+      if (!calculation.success){
         setRecognizedLatex("");
         setCalculatedResult(null);
-
         setCalculationError(
           `Could not calculate "${latex}". ${calculation.error}`
         );
-
         return;
       }
       setCalculatedResult(calculation.value);
-
       const displayExpression = calculation.expression
         .replace(/\\times/g, " × ")
         .replace(/\\cdot/g, " × ")
-        .replace(/\\div/g, " ÷ ")
+        .replace(/\\div/g, " ÷ ")           //So that user can't get confused
         .replace(/\*/g, " × ")
         .replace(/\//g, " ÷ ");
-
       setRecognizedLatex(
         `${displayExpression} = ${calculation.value}`
       );
-
       setCalculationError("");
-
-    } catch (err) {
+    }catch(err){
       console.error("Recognition failed:", err);
-
       setRecognizedLatex("");
       setCalculatedResult(null);
-
       setCalculationError(
         "Could not recognize the handwriting. Please rewrite it."
       );
-
-    } finally {
+    }finally{
       recognitionRunning.current = false;
       setIsRecognizing(false);
-
-      if (recognitionPending.current) {
+      if (recognitionPending.current){
         recognitionPending.current = false;
-
-        if (isEqualsSign()) {
+        if (isEqualsSign()){
           scheduleRecognition();
         }
       }
     }
   };
 
-
   return (
     <div className="canvas-wrapper">
       {/* TOOLBAR */}
-
       <div className="toolbar">
         <button onClick={() => setTool("pen")} className={tool === "pen" ? "active" : ""}>
           Pen
@@ -811,12 +669,8 @@ function InkCanvas() {
         </button>
 
         <button onClick={undo}>Undo</button>
-
         <button onClick={redo}>Redo</button>
-
         <button onClick={clearCanvas}>Clear</button>
-
-        {/* STROKE WIDTH */}
 
         <label>
           Width:
@@ -835,8 +689,6 @@ function InkCanvas() {
         </button>
       </div>
 
-      {/* CANVAS */}
-
       <canvas
         ref={canvasRef}
         className="ink-canvas"
@@ -853,7 +705,6 @@ function InkCanvas() {
               <strong>Recognized:</strong> <span>{recognizedLatex}</span>
             </div>
           )}
-
           {calculationError && (
             <div>
               <strong>Error:</strong> <span>{calculationError}</span>

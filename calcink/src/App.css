@@ -211,7 +211,7 @@ h1 span {
   font-weight: 700;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 640px){
   .app {
     padding: 22px 14px;
   }

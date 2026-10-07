@@ -1,7 +1,7 @@
 import InkCanvas from "./components/InkCanvas";
 import "./App.css";
 
-function App() {
+function App(){
   return (
     <div className="app">
       <main className="workspace">
